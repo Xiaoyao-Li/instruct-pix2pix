@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import json
 import math
 from pathlib import Path
@@ -11,6 +12,8 @@ import torchvision
 from einops import rearrange
 from PIL import Image
 from torch.utils.data import Dataset
+
+from loguru import logger
 
 
 class EditDataset(Dataset):
@@ -35,6 +38,14 @@ class EditDataset(Dataset):
         with open(Path(self.path, "seeds.json")) as f:
             self.seeds = json.load(f)
 
+        # construct subset from self.seeds
+        logger.info(f"Constructing {split} subset from {self.path}...")
+        # subset_names = [f.name for f in os.scandir(self.path) if f.is_dir()]
+        # self.seeds = [s for s in self.seeds if s[0] in subset_names]
+        # # save self.seeds to json file
+        # with open(Path(self.path, "seeds.json"), "w") as f:
+        #     json.dump(self.seeds, f)
+
         split_0, split_1 = {
             "train": (0.0, splits[0]),
             "val": (splits[0], splits[0] + splits[1]),
@@ -44,6 +55,8 @@ class EditDataset(Dataset):
         idx_0 = math.floor(split_0 * len(self.seeds))
         idx_1 = math.floor(split_1 * len(self.seeds))
         self.seeds = self.seeds[idx_0:idx_1]
+        logger.info(f"Subset for {split} contains {len(self.seeds)} samples.")
+
 
     def __len__(self) -> int:
         return len(self.seeds)
