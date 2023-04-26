@@ -654,7 +654,8 @@ if __name__ == "__main__":
                 "dirpath": ckptdir,
                 "filename": "{epoch:06}",
                 "verbose": True,
-                "save_last": True,
+                "save_last": False,
+                "save_top_k": 1,
             }
         }
 

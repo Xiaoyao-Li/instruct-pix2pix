@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH -J EMTraining
-#SBATCH --comment "Traing Edit Model on EPIC-KITCHEN"
+#SBATCH --comment "Traing Edit Model on clip-filtered-data"
 
 #SBATCH --qos level0
 #SBATCH -p gpu
 #SBATCH -N 1
 #SBATCH --gpus=2
-#SBATCH --gres=gpu
+#SBATCH --gres=gpu:2
 #SBATCH --partition=gpu
 # SBATCH -w lambda-hyperplane01
 #SBATCH --account=research
@@ -22,6 +22,6 @@
 
 echo "running slrum file"
 
-python main.py --name default --base configs/train.yaml --train --gpus 0, 1
+python main.py --name default --base configs/train.yaml --train --gpus 0,1
 
 echo "exit slrum file" 

@@ -77,12 +77,13 @@ model:
 data:
   target: main.DataModuleFromConfig
   params:
-    batch_size: 1  # NOTE: original batch size is 32
-    num_workers: 2
+    batch_size: 32  # NOTE: original batch size is 32
+    num_workers: 8
     train:
       target: edit_dataset.EditDataset
       params:
-        path: data/clip-filtered-dataset
+        # path: data/clip-filtered-dataset
+        path: /scratch/generalvision/ImageEdit/ip2p/clip-filtered-dataset
         split: train
         min_resize_res: 256
         max_resize_res: 256
@@ -91,20 +92,21 @@ data:
     validation:
       target: edit_dataset.EditDataset
       params:
-        path: data/clip-filtered-dataset
+        # path: data/clip-filtered-dataset
+        path: /scratch/generalvision/ImageEdit/ip2p/clip-filtered-dataset
         split: val
         min_resize_res: 256
         max_resize_res: 256
         crop_res: 256
 
 lightning:
-  callbacks:
-    image_logger:
-      target: main.ImageLogger
-      params:
-        batch_frequency: 2000
-        max_images: 2
-        increase_log_steps: False
+  # callbacks:
+  #   image_logger:
+  #     target: main.ImageLogger
+  #     params:
+  #       batch_frequency: 2000
+  #       max_images: 2
+  #       increase_log_steps: False
 
   trainer:
     max_epochs: 2000
