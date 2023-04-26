@@ -11,7 +11,7 @@
             "program": "./main.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["--name", "default", "--base", "configs/train.yaml", 
+            "args": ["--name", "default", "--base", "configs/train_epic.yaml", "--name", "debug",
                      "--testtube", "--train", "--gpus", "0,"]
         }
     ]

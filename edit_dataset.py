@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import json
 import math
+import pandas as pd
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,77 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 from loguru import logger
+
+
+class EpicEditDataset(Dataset):
+    LENGTH_FRAME_ID = 10
+    def __init__(
+        self,
+        path: str,
+        split: str = "train",
+        splits: tuple[float, float, float] = (0.9, 0.05, 0.05),
+        min_resize_res: int = 256,
+        max_resize_res: int = 256,
+        crop_res: int = 256,
+        flip_prob: float = 0.0,
+    ):
+        assert split in ("train", "val", "test")
+        assert sum(splits) == 1
+        self.basedir = path
+        self.min_resize_res = min_resize_res
+        self.max_resize_res = max_resize_res
+        self.crop_res = crop_res
+        self.flip_prob = flip_prob
+
+        # load and re-construct metadata
+        self.info = json.load(open(Path(self.basedir, "info.json"), 'r'))
+        self.pre_metadata = pd.read_csv(os.path.join(self.basedir, 'EPIC100_annotations.csv'))
+        self.metadata = []
+        for _, row in self.pre_metadata.iterrows():
+            self.metadata.append(dict(part=row['participant_id'], 
+                                      clip=row['video_id'],
+                                      start=row['start_frame'], stop=row['stop_frame'],
+                                      narration=row['narration']))
+        # self.metadata needs to be shuffled
+        np.random.shuffle(self.metadata)
+        # logger.info(f"Loaded {len(self.metadata)} metadata entries from {self.basedir}.")
+        split_0, split_1 = {
+            "train": (0.0, splits[0]),
+            "val": (splits[0], splits[0] + splits[1]),
+            "test": (splits[0] + splits[1], 1.0),
+        }[split]
+        idx_0 = math.floor(split_0 * len(self.metadata))
+        idx_1 = math.floor(split_1 * len(self.metadata))
+        self.metadata = self.metadata[idx_0:idx_1]
+        logger.info(f"Constructed **{split}** epic-kitchen edit dataset with {len(self.metadata)} entries.")
+
+    def __len__(self) -> int:
+        return len(self.metadata)
+
+    def __getitem__(self, index: Any) -> dict[str, Any]:
+        part, clip, start, stop, prompt = self.metadata[index].values()
+        subdir = os.path.join(self.basedir, part, 'agentago_frames', clip)
+
+        image_0_path = os.path.join(subdir, self._index_to_img_fn(start))
+        image_1_path = os.path.join(subdir, self._index_to_img_fn(stop))
+        image_0 = Image.open(image_0_path)
+        image_1 = Image.open(image_1_path)
+
+        reize_res = torch.randint(self.min_resize_res, self.max_resize_res + 1, ()).item()
+        image_0 = image_0.resize((reize_res, reize_res), Image.Resampling.LANCZOS)
+        image_1 = image_1.resize((reize_res, reize_res), Image.Resampling.LANCZOS)
+
+        image_0 = rearrange(2 * torch.tensor(np.array(image_0)).float() / 255 - 1, "h w c -> c h w")
+        image_1 = rearrange(2 * torch.tensor(np.array(image_1)).float() / 255 - 1, "h w c -> c h w")
+
+        crop = torchvision.transforms.RandomCrop(self.crop_res)
+        flip = torchvision.transforms.RandomHorizontalFlip(float(self.flip_prob))
+        image_0, image_1 = flip(crop(torch.cat((image_0, image_1)))).chunk(2)
+
+        return dict(edited=image_1, edit=dict(c_concat=image_0, c_crossattn=prompt))
+
+    def _index_to_img_fn(self, index) -> str:
+        return f'frame_{index:0{self.LENGTH_FRAME_ID}d}.jpg'
 
 
 class EditDataset(Dataset):
